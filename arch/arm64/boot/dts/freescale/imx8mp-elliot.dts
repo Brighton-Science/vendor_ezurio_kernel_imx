@@ -281,6 +281,19 @@
 			eee-broken-1000t;
 			interrupts-extended = <&gpio1 7 IRQ_TYPE_LEVEL_LOW>;
 			reg-mask = <0x90>;
+			/* Elliot carrier RGMII skew tuning (from verified 12.1 Elliot DT). */
+			rxc-skew-ps = <3000>;
+			rxd0-skew-ps = <0>;
+			rxd1-skew-ps = <0>;
+			rxd2-skew-ps = <0>;
+			rxd3-skew-ps = <0>;
+			rxdv-skew-ps = <0>;
+			txc-skew-ps = <3000>;
+			txd0-skew-ps = <0>;
+			txd1-skew-ps = <0>;
+			txd2-skew-ps = <0>;
+			txd3-skew-ps = <0>;
+			txen-skew-ps = <0>;
 		};
 	};
 };
@@ -1203,4 +1216,78 @@
 			MX8MP_IOMUXC_GPIO1_IO15__GPIO1_IO15	0x19
 		>;
 	};
+};
+
+/* ===== Elliot camera: single OV5640 on i2c2c (MIPI CSI1); no camera on CSI0 =====
+ * 6.6 binding modeled on imx8mp-nitrogen_smarc-ov5640.dts (mainline ovti,ov5640,
+ * 2-lane, ISP bypassed); GPIOs/clock from the verified 12.1 Elliot DT
+ * (powerdown gpio1_11, reset gpio1_10, xclk = IPP_DO_CLKO2 @ 24MHz).
+ * NOTE: media-graph capture correctness to be confirmed on hardware. */
+&i2c2b {
+	/delete-node/ basler_camera@36;
+};
+
+&i2c2c {
+	/delete-node/ basler_camera@36;
+
+	ov5640_csi1: camera@3c {
+		compatible = "ovti,ov5640";
+		reg = <0x3c>;
+		clocks = <&clk IMX8MP_CLK_IPP_DO_CLKO2>;
+		clock-names = "xclk";
+		assigned-clocks = <&clk IMX8MP_CLK_IPP_DO_CLKO2>;
+		assigned-clock-parents = <&clk IMX8MP_CLK_24M>;
+		assigned-clock-rates = <24000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ov5640_elliot>;
+		powerdown-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		port {
+			ov5640_csi1_ep: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&mipi_csi1_ep>;
+			};
+		};
+	};
+};
+
+/* OV5640 is a YUV sensor — bypass the Verisilicon ISP (used only for Basler raw). */
+&isp_0 { status = "disabled"; };
+&isp_1 { status = "disabled"; };
+
+/* No camera on CSI0 for Elliot. */
+&mipi_csi_0 {
+	status = "disabled";
+	/delete-node/ port@0;
+};
+
+/* Repoint CSI1 from the (deleted) Basler to the OV5640, 2-lane. */
+&mipi_csi1_ep {
+	remote-endpoint = <&ov5640_csi1_ep>;
+	data-lanes = <2>;
+};
+
+&iomuxc {
+	pinctrl_ov5640_elliot: ov5640-elliotgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO11__GPIO1_IO11	0x141
+			MX8MP_IOMUXC_GPIO1_IO10__GPIO1_IO10	0x149
+		>;
+	};
+};
+
+/* ===== Elliot carrier difference: no CAN1 =====
+ * On the Nitrogen scaffold gpio1_11 is "can1 detect"; on Elliot (verified 12.1)
+ * gpio1_11 is the OV5640 powerdown. So disable FlexCAN1 and drop the can1 key
+ * (frees gpio1_11 for the camera). Elliot uses FlexCAN2 only. */
+&flexcan1 {
+	status = "disabled";
+};
+
+&gpio_keys {
+	pinctrl-0 = <&pinctrl_key_can2>;
+	/delete-node/ can1;
 };
