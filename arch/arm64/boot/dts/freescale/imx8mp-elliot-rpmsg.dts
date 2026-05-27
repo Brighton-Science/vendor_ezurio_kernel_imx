@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot i.MX8MP with Cortex-M7 (RPMsg) enabled.
+ * M7 remoteproc + RPMsg modeled on imx8mp-nitrogen8mp-rpmsg.dts; adds the
+ * A53<->M7 shared memory region + UIO per SOW req-2.2.24.
+ */
+/dts-v1/;
+
+#include "imx8mp-elliot.dts"
+
+/ {
+	model = "Brighton Elliot i.MX8MPlus board (Cortex-M7 / RPMsg)";
+	compatible = "brighton,imx8mp-elliot-rpmsg", "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		m7_reserved: m7@80000000 {
+			no-map;
+			reg = <0 0x80000000 0 0x1000000>;
+		};
+		vdev0vring0: vdev0vring0@55000000 { reg = <0 0x55000000 0 0x8000>; no-map; };
+		vdev0vring1: vdev0vring1@55008000 { reg = <0 0x55008000 0 0x8000>; no-map; };
+		vdevbuffer: vdevbuffer@55400000 { compatible = "shared-dma-pool"; reg = <0 0x55400000 0 0x100000>; no-map; };
+		rsc_table: rsc-table@550ff000 { reg = <0 0x550ff000 0 0x1000>; no-map; };
+
+		/* SOW req-2.2.24: A53<->M7 shared memory: base 0x7C000000, size 64MB. */
+		m7_a53_shmem: m7-a53-shmem@7c000000 {
+			no-map;
+			reg = <0 0x7c000000 0 0x4000000>;
+		};
+	};
+
+	imx8mp-cm7 {
+		compatible = "fsl,imx8mn-cm7";
+		rsc-da = <0x55000000>;
+		clocks = <&clk IMX8MP_CLK_M7_DIV>;
+		clock-names = "core";
+		mbox-names = "tx", "rx", "rxdb";
+		mboxes = <&mu 0 1
+			  &mu 1 1
+			  &mu 3 1>;
+		memory-region = <&vdevbuffer>, <&vdev0vring0>, <&vdev0vring1>,
+				<&rsc_table>, <&m7_reserved>;
+		status = "okay";
+		fsl,startup-delay-ms = <500>;
+	};
+
+	/* SOW req-2.2.24.3: UIO for restricted userspace access to the shared region. */
+	m7_shmem_uio: uio@7c000000 {
+		compatible = "generic-uio";
+		reg = <0x0 0x7c000000 0x0 0x4000000>;
+		memory-region = <&m7_a53_shmem>;
+		status = "okay";
+	};
+};
+
+/* UART4 is the Cortex-M7 console (Annex A) — release it from the A53. */
+&uart4 {
+	status = "disabled";
+};
