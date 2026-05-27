@@ -1291,3 +1291,69 @@
 	pinctrl-0 = <&pinctrl_key_can2>;
 	/delete-node/ can1;
 };
+
+/* ===== Elliot LVDS: 1280x768 panel (from verified 12.1 Elliot DT) ===== */
+&lcdif2 {
+	status = "okay";
+};
+
+&ldb {
+	status = "okay";
+	lvds-channel@0 {
+		status = "okay";
+	};
+};
+
+/* Override the scaffold's m101nwwb (1280x800) timings with Elliot's panel. */
+&t_lvds {
+	clock-frequency = <64998000>;
+	hactive = <1280>;
+	vactive = <768>;
+	hback-porch = <220>;
+	hfront-porch = <40>;
+	vback-porch = <21>;
+	vfront-porch = <7>;
+	hsync-len = <60>;
+	vsync-len = <10>;
+};
+
+&backlight_lvds {
+	status = "okay";
+};
+
+/* ===== Elliot audio/wakeup carrier difference =====
+ * Elliot has NO WM8960 codec (Nitrogen-only). gpio1_14 is the Elliot wakeup key
+ * (it is WM8960 headphone-detect on the Nitrogen scaffold). Remove the WM8960
+ * sound card + codec/sai3 and add the wakeup key. (Elliot audio = micfil + HDMI.) */
+/ {
+	/delete-node/ sound-wm8960;
+
+	wakeup_keys: wakeup-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_elliot_wakeup>;
+
+		wakeup-gpio {
+			label = "wakeup_gpio";
+			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_WAKEUP>;
+			wakeup-source;
+		};
+	};
+};
+
+&wm8960 {
+	status = "disabled";
+};
+
+&sai3 {
+	status = "disabled";
+};
+
+&iomuxc {
+	pinctrl_elliot_wakeup: elliot-wakeupgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO14__GPIO1_IO14	0x80
+		>;
+	};
+};
