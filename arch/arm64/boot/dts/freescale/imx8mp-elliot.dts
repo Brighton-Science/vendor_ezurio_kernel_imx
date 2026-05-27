@@ -281,7 +281,13 @@
 			eee-broken-1000t;
 			interrupts-extended = <&gpio1 7 IRQ_TYPE_LEVEL_LOW>;
 			reg-mask = <0x90>;
-			/* Elliot carrier RGMII skew tuning (from verified 12.1 Elliot DT). */
+			/*
+			 * Nitrogen8MP SOM on-module FEC PHY (secondary eth). The
+			 * Elliot carrier's primary gigabit port is the AT8031 on
+			 * &eqos (ENET_QOS), configured per board revision in
+			 * imx8mp-elliot_rev{10,20}.dts. Conservative RGMII skew
+			 * for the SOM RGMII trace.
+			 */
 			rxc-skew-ps = <3000>;
 			rxd0-skew-ps = <0>;
 			rxd1-skew-ps = <0>;

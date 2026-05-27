@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot rev10 with the Cortex-M7 enabled (RPMsg + shared memory).
+ * = imx8mp-elliot_rev10.dts + the shared M7 enablement. Selected when U-Boot
+ * detects rev10 (board=elliot-rev10, mcore=-rpmsg ->
+ * compatible "ezurio,imx8mp-elliot-rev10-rpmsg").
+ */
+
+/dts-v1/;
+
+#include "imx8mp-elliot_rev10.dts"
+#include "imx8mp-elliot-m7.dtsi"
+
+/ {
+	model = "Brighton Elliot i.MX8MPlus rev10 (Cortex-M7 / RPMsg)";
+	compatible = "ezurio,imx8mp-elliot-rev10-rpmsg", "brighton,imx8mp-elliot-rpmsg",
+		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
+};

@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Brighton Elliot i.MX8MP with Cortex-M7 (RPMsg) enabled.
- * M7 remoteproc + RPMsg modeled on imx8mp-nitrogen8mp-rpmsg.dts; adds the
- * A53<->M7 shared memory region + UIO per SOW req-2.2.24.
+ * Brighton Elliot Cortex-M7 enablement (shared by the -rpmsg and -m4 variants).
+ * cm7 remoteproc + RPMsg vrings modeled on imx8mp-nitrogen8mp-rpmsg.dts, plus the
+ * A53<->M7 shared memory region + UIO (SOW req-2.2.24). UART4 is the M7 console.
  */
-/dts-v1/;
-
-#include "imx8mp-elliot.dts"
 
 / {
-	model = "Brighton Elliot i.MX8MPlus board (Cortex-M7 / RPMsg)";
-	compatible = "brighton,imx8mp-elliot-rpmsg", "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
-
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -57,7 +51,17 @@
 	};
 };
 
-/* UART4 is the Cortex-M7 console (Annex A) — release it from the A53. */
+/* Annex A: release the M7-owned peripherals from the A53 in M7 builds.
+ * UART4 = M7 console; eCSPI2 = M7<->MSP430 comms; PWM4 = M7 illumination LED.
+ * (FlexCAN1 + I2C3 are already disabled in the base elliot DT.) */
 &uart4 {
+	status = "disabled";
+};
+
+&ecspi2 {
+	status = "disabled";
+};
+
+&pwm4 {
 	status = "disabled";
 };

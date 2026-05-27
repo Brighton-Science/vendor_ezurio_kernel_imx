@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot carrier board, rev20.
+ *
+ * Layers on top of the base imx8mp-elliot.dts. The only carrier delta vs the
+ * base (which already brings USB-C/hd3ss3220 + i2c4 from the SOM dtsi) is the
+ * gigabit Ethernet: ENET_QOS (&eqos) with the Atheros AT8031 RGMII PHY, ported
+ * from the verified 12.1 imx8mp-elliot_rev20.dts. rev20 wires the PHY interrupt
+ * to GPIO3_IO14 (rev10 uses GPIO3_IO02 — that is the only rev10/rev20 delta).
+ */
+
+/dts-v1/;
+
+#include "imx8mp-elliot.dts"
+
+/ {
+	model = "Brighton Elliot i.MX8MPlus rev20";
+	/* rev20 is the default board (board=elliot) selected by the bootscript. */
+	compatible = "ezurio,imx8mp-elliot", "brighton,imx8mp-elliot",
+		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
+};
+
+/* Gigabit Ethernet on ENET_QOS, AT8031 PHY (Annex A: A53-owned eth0). */
+&eqos {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_eqos>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethphy_qos>;
+	status = "okay";
+
+	mdio {
+		compatible = "snps,dwmac-mdio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy_qos: ethernet-phy@4 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <4>;
+			at803x,hib-disabled;
+			eee-broken-1000t;
+			interrupt-parent = <&gpio3>;
+			interrupts = <14 IRQ_TYPE_LEVEL_LOW>;
+			rxc-skew-ps = <3000>;
+			txc-skew-ps = <3000>;
+			rxdv-skew-ps = <0>;
+			txen-skew-ps = <0>;
+		};
+	};
+};

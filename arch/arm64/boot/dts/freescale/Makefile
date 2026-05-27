@@ -780,7 +780,9 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mm-nitrogen8mm.dtb imx8mm-nitrogen8mm-rpmsg.dtb \
 			  imx8mm-nitrogen_smarc-pivariety.dtb imx8mm-nitrogen_smarc-tevs.dtb \
 			  imx8mm-nitrogen_smarc-nx611.dtb imx8mm-nitrogen_smarc-ti351.dtb \
 
-dtb-$(CONFIG_ARCH_MXC) += imx8mp-elliot.dtb imx8mp-elliot-rpmsg.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-elliot.dtb \
+	imx8mp-elliot_rev10.dtb imx8mp-elliot_rev20.dtb \
+	imx8mp-elliot-m4_rev10.dtb imx8mp-elliot-m4_rev20.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-nitrogen8mp.dtb imx8mp-nitrogen8mp-rpmsg.dtb \
 			  imx8mp-nitrogen8mp_r20.dtb imx8mp-nitrogen8mp_r20-rpmsg.dtb \
 			  imx8mp-nitrogen8mp-enc.dtb imx8mp-nitrogen8mp-enc-rpmsg.dtb \

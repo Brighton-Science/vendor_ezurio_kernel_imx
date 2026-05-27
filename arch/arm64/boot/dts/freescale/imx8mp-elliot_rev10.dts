@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot carrier board, rev10.
+ *
+ * Identical to imx8mp-elliot_rev20.dts except the AT8031 PHY interrupt is wired
+ * to GPIO3_IO02 (rev20 uses GPIO3_IO14). Ported from the verified 12.1
+ * imx8mp-elliot_rev10.dts.
+ */
+
+/dts-v1/;
+
+#include "imx8mp-elliot.dts"
+
+/ {
+	model = "Brighton Elliot i.MX8MPlus rev10";
+	/* Distinct first-compatible so U-Boot (board=elliot-rev10) can select this
+	 * variant at runtime; rev20 is the default board=elliot. */
+	compatible = "ezurio,imx8mp-elliot-rev10", "brighton,imx8mp-elliot",
+		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
+};
+
+/* Gigabit Ethernet on ENET_QOS, AT8031 PHY (Annex A: A53-owned eth0). */
+&eqos {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_eqos>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethphy_qos>;
+	status = "okay";
+
+	mdio {
+		compatible = "snps,dwmac-mdio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy_qos: ethernet-phy@4 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <4>;
+			at803x,hib-disabled;
+			eee-broken-1000t;
+			interrupt-parent = <&gpio3>;
+			interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+			rxc-skew-ps = <3000>;
+			txc-skew-ps = <3000>;
+			rxdv-skew-ps = <0>;
+			txen-skew-ps = <0>;
+		};
+	};
+};
