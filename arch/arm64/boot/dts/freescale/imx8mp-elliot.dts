@@ -195,7 +195,16 @@
 		status = "okay";
 	};
 
+	/*
+	 * Elliot has no WM8960 codec (Nitrogen-only; audio = micfil + HDMI). This
+	 * machine node is disabled so it does not register a dead card and, more
+	 * importantly, does not claim GPIO1_IO14 (hp-det-gpio) / pinctrl_sound_wm8960
+	 * which would collide with the Elliot wakeup key on GPIO1_IO14 (see
+	 * wakeup_keys + pinctrl_elliot_wakeup below). Matches the 12.1 Elliot DT,
+	 * which omits the WM8960 card entirely.
+	 */
 	sound-wm8960 {
+		status = "disabled";
 		audio-codec = <&wm8960>;
 		audio-cpu = <&sai3>;
 		audio-routing =
