@@ -1170,3 +1170,37 @@
 	status = "okay";
 	vmmc-supply = <&reg_vref_3v3>;
 };
+
+/* ------------------------------------------------------------------------
+ * Brighton Elliot carrier-board additions (ported from 12.1 imx8mp-elliot.dts).
+ * Only non-colliding, additive nodes are enabled here; pin-repurposing deltas
+ * vs the Nitrogen scaffold (e.g. gpio1_14 wakeup vs hp-det, OV5640 vs Basler
+ * camera, AT8031 PHY skew, LVDS panel) require the Elliot board/schematic and
+ * are done at hardware bring-up.
+ * ------------------------------------------------------------------------ */
+/ {
+	/* Elliot power-off GPIO (gpio1_15 is free on the Nitrogen scaffold). */
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_elliot_poweroff>;
+		gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+/* Elliot SBS smart battery on the pca9546 i2c2a segment. */
+&i2c2a {
+	battery_sbs@b {
+		compatible = "sbs,sbs-battery";
+		reg = <0x0b>;
+	};
+};
+
+&iomuxc {
+	pinctrl_elliot_poweroff: elliot-poweroffgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO15__GPIO1_IO15	0x19
+		>;
+	};
+};
