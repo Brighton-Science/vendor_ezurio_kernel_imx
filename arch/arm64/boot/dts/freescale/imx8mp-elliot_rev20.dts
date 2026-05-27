@@ -15,8 +15,10 @@
 
 / {
 	model = "Brighton Elliot i.MX8MPlus rev20";
-	/* rev20 is the default board (board=elliot) selected by the bootscript. */
-	compatible = "ezurio,imx8mp-elliot", "brighton,imx8mp-elliot",
+	/* rev20 boards are auto-detected by U-Boot (KSZ PHY -> board_rv=_r20), so
+	 * the first compatible carries the _r20 suffix to match the bootscript
+	 * dtexp ezurio,imx8mp-${board}${board_rv}${mcore}. */
+	compatible = "ezurio,imx8mp-elliot_r20", "brighton,imx8mp-elliot",
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
 

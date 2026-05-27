@@ -13,9 +13,10 @@
 
 / {
 	model = "Brighton Elliot i.MX8MPlus rev10";
-	/* Distinct first-compatible so U-Boot (board=elliot-rev10) can select this
-	 * variant at runtime; rev20 is the default board=elliot. */
-	compatible = "ezurio,imx8mp-elliot-rev10", "brighton,imx8mp-elliot",
+	/* rev10 is the default revision (U-Boot leaves ${board_rv} empty), so its
+	 * first compatible is the bare ezurio,imx8mp-elliot — matching the bootscript
+	 * dtexp ezurio,imx8mp-${board}${board_rv}${mcore} with board=elliot. */
+	compatible = "ezurio,imx8mp-elliot", "brighton,imx8mp-elliot",
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
 

@@ -3,8 +3,9 @@
  * Brighton Elliot rev20 with the Cortex-M7 enabled (RPMsg + shared memory).
  * = imx8mp-elliot_rev20.dts (carrier + AT8031 Ethernet) + the shared M7
  * enablement (cm7 remoteproc, RPMsg vrings, A53<->M7 shmem 0x7C000000/64MB +
- * UIO, and the Annex-A M7-owned pin releases). Default M7 boot target:
- * U-Boot board=elliot, mcore=-rpmsg -> compatible "ezurio,imx8mp-elliot-rpmsg".
+ * UIO, and the Annex-A M7-owned pin releases). Selected on a rev20 board with
+ * the M7 enabled: board=elliot, board_rv=_r20, mcore=-rpmsg ->
+ * compatible "ezurio,imx8mp-elliot_r20-rpmsg".
  */
 
 /dts-v1/;
@@ -14,6 +15,6 @@
 
 / {
 	model = "Brighton Elliot i.MX8MPlus rev20 (Cortex-M7 / RPMsg)";
-	compatible = "ezurio,imx8mp-elliot-rpmsg", "brighton,imx8mp-elliot-rpmsg",
+	compatible = "ezurio,imx8mp-elliot_r20-rpmsg", "brighton,imx8mp-elliot-rpmsg",
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
