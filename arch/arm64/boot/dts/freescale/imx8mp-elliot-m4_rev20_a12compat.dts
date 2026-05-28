@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot rev20 + Cortex-M7 — 12.1-bootloader-compatible alias.
+ *
+ * Pairs with imx8mp-elliot_rev20_a12compat.dts but for the M7-enabled variant.
+ * Same DT content as imx8mp-elliot-m4_rev20.dts; first compatible is
+ * "boundary,imx8mp-nitrogen8mp-m4" so a 12.1 U-Boot booting in M7 mode (board=
+ * nitrogen8mp + mcore=-m4) picks this dtbo entry after the OS has been OTA'd.
+ */
+
+/dts-v1/;
+
+#include "imx8mp-elliot-m4_rev20.dts"
+
+/ {
+	model = "Brighton Elliot i.MX8MPlus rev20 + M7 (Android 12.1 OTA compat)";
+	compatible = "boundary,imx8mp-nitrogen8mp-m4",
+		     "ezurio,imx8mp-elliot_r20-rpmsg", "brighton,imx8mp-elliot-rpmsg",
+		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
+};
