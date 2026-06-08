@@ -15,6 +15,7 @@
 
 / {
 	model = "Brighton Elliot i.MX8MPlus rev20";
+	dtb_filename = "imx8mp-elliot_rev20.dtb";
 	/* rev20 boards are auto-detected by U-Boot (KSZ PHY -> board_rv=_r20), so
 	 * the first compatible carries the _r20 suffix to match the bootscript
 	 * dtexp ezurio,imx8mp-${board}${board_rv}${mcore}. */

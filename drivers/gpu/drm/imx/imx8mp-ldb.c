@@ -253,13 +253,19 @@ imx8mp_ldb_encoder_atomic_check(struct drm_encoder *encoder,
 	}
 
 	/*
-	 * Due to limited video PLL frequency points on i.MX8mp,
-	 * we do mode fixup here in case any mode is unsupported.
+	 * Brighton/Elliot: The original NXP driver forced the pixel clock
+	 * to 74.25 MHz (single) or 148.5 MHz (dual) "due to limited video
+	 * PLL frequency points on i.MX8mp."  Boundary's 5.15 driver had
+	 * this disabled and 12.1 shipped that way with our 64.998 MHz LVDS
+	 * panel running fine.  Keep the user's display-timings clock so
+	 * the M101NWWB and similar non-WXGA panels work.
 	 */
+#if 0
 	if (ldb->dual)
 		mode->clock = mode->clock > 100000 ? 148500 : 74250;
 	else
 		mode->clock = 74250;
+#endif
 
 	return 0;
 }
@@ -279,14 +285,19 @@ imx8mp_ldb_encoder_mode_valid(struct drm_encoder *encoder,
 		return MODE_OK;
 
 	/*
-	 * Due to limited video PLL frequency points on i.MX8mp,
-	 * we do mode valid check here.
+	 * Brighton/Elliot: NXP's upstream driver rejected every non-WXGA
+	 * pixel clock (forced 74.25 MHz single / 148.5 MHz dual).  That
+	 * blocked our 64.998 MHz M101NWWB LVDS panel — the LVDS connector
+	 * reported zero modes, no framebuffer ever appeared, panel stayed
+	 * dark.  Boundary's 5.15 driver had this disabled; restore that.
 	 */
+#if 0
 	if (ldb->dual && mode->clock != 74250 && mode->clock != 148500)
 		return MODE_NOCLOCK;
 
 	if (!ldb->dual && mode->clock != 74250)
 		return MODE_NOCLOCK;
+#endif
 
 	return MODE_OK;
 }

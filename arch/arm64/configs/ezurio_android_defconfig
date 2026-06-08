@@ -67,7 +67,7 @@ CONFIG_CP15_BARRIER_EMULATION=y
 CONFIG_SETEND_EMULATION=y
 CONFIG_RANDOMIZE_BASE=y
 # CONFIG_RANDOMIZE_MODULE_REGION_FULL is not set
-CONFIG_CMDLINE="stack_depot_disable=on cgroup_disable=pressure kasan.page_alloc.sample=10 kasan.stacktrace=off kvm-arm.mode=protected bootconfig ioremap_guard"
+CONFIG_CMDLINE="stack_depot_disable=on cgroup_disable=pressure kasan.stacktrace=off bootconfig"
 CONFIG_CMDLINE_EXTEND=y
 # CONFIG_DMI is not set
 CONFIG_PM_WAKELOCKS=y
@@ -1094,7 +1094,9 @@ CONFIG_XEN_GRANT_DEV_ALLOC=y
 CONFIG_STAGING=y
 CONFIG_STAGING_MEDIA=y
 CONFIG_VIDEO_IMX_CAPTURE=y
-CONFIG_IMX8_MEDIA_DEVICE=m
+# CONFIG_IMX8_MEDIA_DEVICE is not set  (Brighton/Elliot: staging driver,
+# unknown quality, taints kernel + suspected source of post-boot kernel slab
+# corruption — see device/brighton/elliot_8mp/SharedBoardConfig.mk note)
 CONFIG_MHDP_HDMIRX=y
 CONFIG_MHDP_HDMIRX_CEC=y
 CONFIG_ASHMEM=y
@@ -1370,8 +1372,8 @@ CONFIG_MAGIC_SYSRQ=y
 CONFIG_PAGE_OWNER=y
 CONFIG_DEBUG_STACK_USAGE=y
 CONFIG_DEBUG_MEMORY_INIT=y
-CONFIG_KASAN=y
-CONFIG_KASAN_HW_TAGS=y
+# CONFIG_KASAN is not set
+# CONFIG_KASAN_HW_TAGS is not set
 CONFIG_KFENCE=y
 CONFIG_KFENCE_SAMPLE_INTERVAL=500
 CONFIG_KFENCE_NUM_OBJECTS=63

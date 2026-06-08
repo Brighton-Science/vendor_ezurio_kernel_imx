@@ -489,17 +489,24 @@ static int __add_cma_heap(struct cma *cma, void *data)
 	return 0;
 }
 
-static int add_default_cma_heap(void)
+/*
+ * Brighton/Elliot patch: NXP iMX gralloc/HWComposer hardcodes requests for
+ * the "reserved" / "reserved-uncached" dmabuf heaps for every contiguous
+ * framebuffer allocation (vendor/nxp-opensource/imx/display/display/
+ * DmaHeapAllocator.cpp:81-83). Stock Ezurio cma_heap.c only registered the
+ * *default* CMA region, so a `reserved: reserved { compatible = "shared-dma-
+ * pool"; }` DT node never became a usable heap. Result: surfaceflinger fb
+ * alloc returned -ENOMEM, composer3-service.imx spun at 60-100 % CPU, and
+ * sys.boot_completed never fired once LVDS was actually being driven.
+ * Iterate every CMA area so each named region becomes a heap pair (e.g.
+ * "linux,cma" + "linux,cma-uncached" and "reserved" + "reserved-uncached").
+ */
+static int add_all_cma_heaps(void)
 {
-	struct cma *default_cma = dev_get_cma_area(NULL);
-	int ret = 0;
-
-	if (default_cma)
-		ret = __add_cma_heap(default_cma, NULL);
-
-	return ret;
+	cma_for_each_area(__add_cma_heap, NULL);
+	return 0;
 }
-module_init(add_default_cma_heap);
+module_init(add_all_cma_heaps);
 MODULE_DESCRIPTION("DMA-BUF CMA Heap");
 MODULE_LICENSE("GPL v2");
 MODULE_IMPORT_NS(DMA_BUF);

@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Brighton Elliot — Android first-stage mount + bootconfig helpers.
+ *
+ * Two distinct purposes:
+ *
+ *   1) boot_devices_mmcblk2: 12.1 u-boot's append_runtime_bootargs
+ *      (boot/image-android.c:183-208) reads /firmware/android/boot_devices_mmcblkX
+ *      from the selected DTB to set androidboot.boot_devices. eMMC (USDHC3,
+ *      0x30b60000) is mapped to mmcblk2 on the kernel side.
+ *
+ *   2) fstab: A15 first-stage init's GetDmVerityDevices
+ *      (system/core/init/first_stage_mount.cpp:758-803) collects vbmeta-protected
+ *      partitions to wait for via uevent. For each LP/super sub-partition that
+ *      fstab marks `logical`, init creates a dm-linear device after reading
+ *      LP super metadata; otherwise it waits for /dev/block/by-name/<X> which
+ *      never appears for dynamic partitions and the boot stalls with
+ *      "partition(s) not found after polling timeout". Mark every dynamic
+ *      partition `logical,first_stage_mount` so init takes the dm path.
+ *
+ * Deliberately a minimal subset of Ezurio's imx8mp-android.dtsi: we omit the
+ * trusty/CMA/ramoops/secure_region/uart1-bluetooth tweaks since this build has
+ * PRODUCT_IMX_TRUSTY := false and uses Brighton CMA/peripheral wiring.
+ */
+
+/ {
+	firmware {
+		android {
+			compatible = "android,firmware";
+			/* eMMC (USDHC3 @ 0x30b60000) -> mmcblk2 — flash target on this device. */
+			boot_devices_mmcblk2 = "soc@0/30800000.bus/30b60000.mmc";
+
+			/* First-stage fstab. Mount points + types for the dynamic-partition
+			 * set declared in BOARD_NXP_DYNAMIC_PARTITIONS_PARTITION_LIST. ext4
+			 * for system/vendor (BOARD_*IMAGE_FILE_SYSTEM_TYPE := ext4 in elliot
+			 * common); erofs for the *_dlkm pair (Ezurio common imx8m/A/B mode).
+			 */
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1";
+					fsmgr_flags = "wait,slotselect,avb,logical,first_stage_mount";
+				};
+				system_dlkm {
+					compatible = "android,system_dlkm";
+					dev = "system_dlkm";
+					type = "erofs";
+					/* erofs is read-only and rejects "barrier" (ext4-only). */
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,slotselect,avb,logical,first_stage_mount";
+				};
+				vendor {
+					compatible = "android,vendor";
+					dev = "vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1";
+					fsmgr_flags = "wait,slotselect,avb,logical,first_stage_mount";
+				};
+				vendor_dlkm {
+					compatible = "android,vendor_dlkm";
+					dev = "vendor_dlkm";
+					type = "erofs";
+					/* erofs is read-only and rejects "barrier" (ext4-only). */
+					mnt_flags = "ro";
+					fsmgr_flags = "wait,slotselect,avb,logical,first_stage_mount";
+				};
+				metadata {
+					compatible = "android,metadata";
+					dev = "/dev/block/by-name/metadata";
+					type = "ext4";
+					mnt_flags = "noatime,nosuid,nodev,discard,sync";
+					fsmgr_flags = "wait,formattable,first_stage_mount,check";
+				};
+			};
+			vbmeta {
+				/* FirstStageMountVBootV2 — enabled since BOARD_AVB_ENABLE := true. */
+				compatible = "android,vbmeta";
+				/* Partitions whose AVB descriptors live in the top-level vbmeta_a.
+				 * Must match the actual hashtree+chain descriptors in
+				 * out/target/product/elliot_8mp/vbmeta.img. */
+				parts = "vbmeta,dtbo,boot,vendor_boot,system,vendor,system_dlkm,vendor_dlkm";
+			};
+		};
+	};
+};
+

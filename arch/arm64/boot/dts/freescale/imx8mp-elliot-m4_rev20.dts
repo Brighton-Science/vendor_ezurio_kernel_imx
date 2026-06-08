@@ -15,6 +15,7 @@
 
 / {
 	model = "Brighton Elliot i.MX8MPlus rev20 (Cortex-M7 / RPMsg)";
+	dtb_filename = "imx8mp-elliot-m4_rev20.dtb";
 	compatible = "ezurio,imx8mp-elliot_r20-rpmsg", "brighton,imx8mp-elliot-rpmsg",
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
