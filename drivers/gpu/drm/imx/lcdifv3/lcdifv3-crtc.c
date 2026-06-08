@@ -216,6 +216,23 @@ static int lcdifv3_enable_vblank(struct drm_crtc *crtc)
 	struct lcdifv3_crtc *lcdifv3_crtc = to_lcdifv3_crtc(crtc);
 	struct lcdifv3_soc *lcdifv3 = dev_get_drvdata(lcdifv3_crtc->dev->parent);
 
+	/*
+	 * Brighton/Elliot: hold a runtime-PM reference on the LCDIFv3 parent
+	 * for as long as DRM has vblank reporting enabled.  The Ezurio 6.6
+	 * port dropped these pm_runtime_get_sync/put pairs (the 12.1 5.15
+	 * driver had them); without them the LCDIFv3 power domain can
+	 * autosuspend or partially gate between CRTC enable and the DRM
+	 * vblank-wait window, vblank IRQs stop firing, and every
+	 * drm_atomic_helper_wait_for_vblanks() commit hits its 200 ms
+	 * timeout (see dmesg "[CRTC:33:crtc-0] vblank wait timed out" +
+	 * "lcdifv3_drm_atomic_commit_tail").  The shadow-load latch then
+	 * races scanout instead of being aligned to vblank, which manifests
+	 * on the LVDS panel as full-width horizontal bands of pixelation at
+	 * the Y positions where partial-update layers (icons, dock,
+	 * status bar) land - even though the in-memory framebuffer is
+	 * clean per `screencap`.
+	 */
+	pm_runtime_get_sync(lcdifv3_crtc->dev->parent);
 	lcdifv3_vblank_irq_enable(lcdifv3);
 	enable_irq(lcdifv3_crtc->vbl_irq);
 
@@ -229,6 +246,7 @@ static void lcdifv3_disable_vblank(struct drm_crtc *crtc)
 
 	disable_irq_nosync(lcdifv3_crtc->vbl_irq);
 	lcdifv3_vblank_irq_disable(lcdifv3);
+	pm_runtime_put(lcdifv3_crtc->dev->parent);
 }
 
 static const struct drm_crtc_funcs lcdifv3_crtc_funcs = {
