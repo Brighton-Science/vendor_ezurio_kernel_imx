@@ -169,17 +169,6 @@
 		enable-active-high;
 	};
 
-	reg_usb1_vbus: regulator-usb1-vbus {
-		compatible = "regulator-fixed";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_reg_usb1_vbus>;
-		regulator-name = "usb_host_vbus";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio1 6 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
 	sound_hdmi: sound-hdmi {
 		compatible = "fsl,imx-audio-hdmi";
 		model = "audio-hdmi";
@@ -685,6 +674,9 @@
 			MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06		0x41	/* Pin 31 */
 			MX8MP_IOMUXC_SAI1_MCLK__GPIO4_IO20		0x16	/* Pin 2 */
 			MX8MP_IOMUXC_SAI1_TXD7__GPIO4_IO19		0x1c4	/* Pin 4 */
+			/* USB3-1 hub reset on Elliot carrier (driven HIGH by gpio-hog
+			 * below so the on-board Microchip USB4006 hub leaves reset). */
+			MX8MP_IOMUXC_GPIO1_IO06__GPIO1_IO06		0x16
 		>;
 	};
 
@@ -747,12 +739,6 @@
 	pinctrl_reg_usbotg_vbus: reg-usbotg-vbusgrp {
 		fsl,pins = <
 			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12	0x100
-		>;
-	};
-
-	pinctrl_reg_usb1_vbus: reg-usb1_vbusgrp {
-		fsl,pins = <
-			MX8MP_IOMUXC_GPIO1_IO06__GPIO1_IO06	0x100
 		>;
 	};
 
@@ -1171,6 +1157,15 @@
 	};
 };
 
+&gpio1 {
+	usb3_1_hub_reset_hog {
+		gpio-hog;
+		gpios = <6 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "usb3-1-hub-reset-n";
+	};
+};
+
 &usb_dwc3_1 {
 	dr_mode = "host";
 	status = "okay";
@@ -1179,18 +1174,20 @@
 &usb3_phy0 {
 	fsl,phy-tx-preemp-amp-tune = <2>;
 	status = "okay";
-	vbus-supply = <&reg_usb_otg_vbus>;
+	vbus-supply = <&reg_vref_5v0>;
 };
 
 &usb3_phy1 {
 	fsl,phy-tx-preemp-amp-tune = <2>;
 	status = "okay";
-	vbus-supply = <&reg_usb1_vbus>;
+	vbus-supply = <&reg_vref_5v0>;
 };
 
 &usdhc1 {
 	bus-width = <4>;
-	cd-gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;
+	/* Elliot carrier: SD CD wired to GPIO2_IO07, matching 12.1.
+	 * A15 default was <&gpio2 11> which polls SD1_STROBE — wrong pin. */
+	cd-gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc1>, <&pinctrl_usdhc1_gpio>;
 	pinctrl-1 = <&pinctrl_usdhc1_100mhz>, <&pinctrl_usdhc1_gpio>;
@@ -1372,3 +1369,7 @@
 		>;
 	};
 };
+
+/* Android first-stage mount / bootconfig helpers (boot_devices_mmcblk2 etc.).
+ * Required by 12.1 u-boot append_runtime_bootargs in boot/image-android.c. */
+#include "imx8mp-elliot-android.dtsi"
