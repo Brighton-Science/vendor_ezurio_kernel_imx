@@ -56,6 +56,19 @@ struct lcdifv3_soc {
 	struct clk *clk_pix;
 	struct clk *clk_disp_axi;
 	struct clk *clk_disp_apb;
+	/*
+	 * Brighton/Elliot: re-introduce the LDB serial + LDB PLL clock refs
+	 * that the Ezurio 6.6 port dropped.  12.1 used these to keep the
+	 * LCDIFv3 pixel clock in exact 1:7 lock-step with the LDB serializer
+	 * by setting ldb_pll = pixelclock*7, reading back the actually-achieved
+	 * rate (VIDEO_PLL1 has discrete frequency points), and then deriving
+	 * clk_pix from that.  Without the handshake the LDB and LCDIFv3 set
+	 * VIDEO_PLL1 to slightly different rates independently and the LDB
+	 * serializer drifts vs LCDIFv3 scanout — visible as full-width
+	 * horizontal banding at high-contrast scanlines (icon edges).
+	 */
+	struct clk *clk_ldb;
+	struct clk *clk_ldb_pll;
 	struct device *trusty_dev;
 
 	u32 thres_low_mul;
@@ -398,10 +411,36 @@ void lcdifv3_set_mode(struct lcdifv3_soc *lcdifv3, struct videomode *vmode)
 		return;
 	soc_pdata = of_id->data;
 
-	/* set pixel clock rate */
-	clk_disable_unprepare(lcdifv3->clk_pix);
-	clk_set_rate(lcdifv3->clk_pix, vmode->pixelclock);
-	clk_prepare_enable(lcdifv3->clk_pix);
+	/*
+	 * Brighton/Elliot: keep the LCDIFv3 pixel clock in exact 1:7 lock-step
+	 * with the LDB serializer.  Both ultimately derive from VIDEO_PLL1 but
+	 * via independent dividers, and the LDB driver may have set
+	 * VIDEO_PLL1 to a rate slightly different from what was requested
+	 * (PLL has discrete frequency points).  Read back the achieved
+	 * ldb_pll / ldb rate and derive pixelclock from it so the LDB and
+	 * LCDIFv3 share the same actual reference rate.  Restored from 12.1
+	 * (5.15) BSP.  See struct field comment for the visible-banding
+	 * symptom this prevents.
+	 */
+	{
+		unsigned long pixelclock = vmode->pixelclock;
+
+		clk_disable_unprepare(lcdifv3->clk_pix);
+		if (lcdifv3->clk_ldb_pll) {
+			clk_set_rate(lcdifv3->clk_ldb_pll, pixelclock * 7);
+			pixelclock = clk_get_rate(lcdifv3->clk_ldb_pll) / 7;
+			pr_info("%s: ldb_pll wanted %lu got %lu\n", __func__,
+				vmode->pixelclock * 7, pixelclock * 7);
+		}
+		if (lcdifv3->clk_ldb) {
+			clk_set_rate(lcdifv3->clk_ldb, pixelclock * 7);
+			pixelclock = clk_get_rate(lcdifv3->clk_ldb) / 7;
+			pr_info("%s: ldb wanted %lu got %lu\n", __func__,
+				vmode->pixelclock * 7, pixelclock * 7);
+		}
+		clk_set_rate(lcdifv3->clk_pix, pixelclock);
+		clk_prepare_enable(lcdifv3->clk_pix);
+	}
 
 	/* config display timings */
 	disp_size = DISP_SIZE_DELTA_Y(vmode->vactive) |
@@ -469,10 +508,22 @@ void lcdifv3_set_mode(struct lcdifv3_soc *lcdifv3, struct videomode *vmode)
 			writel(CTRL_INV_DE, lcdifv3->base + LCDIFV3_CTRL_CLR);
 	}
 
+	/*
+	 * Brighton/Elliot: the Ezurio 6.6 port inverted the CTRL_INV_PXCK
+	 * register write logic vs 12.1 (5.15) — when DISPLAY_FLAGS_PIXDATA_NEGEDGE
+	 * is set, 12.1 *clears* CTRL_INV_PXCK so the LCDIFv3 drives the pixel
+	 * clock at its natural phase; A15 was *setting* it, inverting the clock
+	 * the LCDIFv3 drove to the LDB serializer.  Result: LDB serdes samples
+	 * the parallel LCDIFv3 data on the wrong edge — works for low-frequency
+	 * pixels but lands inside the setup/hold margin for icon edges and
+	 * high-contrast content, manifesting as full-width horizontal bands of
+	 * pixelation at icon/dock/search-bar Y positions even though the
+	 * framebuffer is clean.  Restore 12.1 semantics.
+	 */
 	if (vmode->flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
-		writel(CTRL_INV_PXCK, lcdifv3->base + LCDIFV3_CTRL_SET);
-	else
 		writel(CTRL_INV_PXCK, lcdifv3->base + LCDIFV3_CTRL_CLR);
+	else
+		writel(CTRL_INV_PXCK, lcdifv3->base + LCDIFV3_CTRL_SET);
 }
 EXPORT_SYMBOL(lcdifv3_set_mode);
 
@@ -707,6 +758,20 @@ static int imx_lcdifv3_probe(struct platform_device *pdev)
 	lcdifv3->clk_disp_apb = devm_clk_get(dev, "disp-apb");
 	if (IS_ERR(lcdifv3->clk_disp_apb))
 		lcdifv3->clk_disp_apb = NULL;
+
+	/* Brighton/Elliot: LDB-side clocks for the pixel-clock handshake.
+	 * Optional — only the LDB-driving LCDIFv3 instance has these wired
+	 * up in DT (lcdif2 on i.MX8MP).  See lcdifv3_set_mode().
+	 */
+	lcdifv3->clk_ldb = devm_clk_get_optional(dev, "ldb");
+	if (IS_ERR(lcdifv3->clk_ldb))
+		return dev_err_probe(dev, PTR_ERR(lcdifv3->clk_ldb),
+				     "ldb clock failed\n");
+
+	lcdifv3->clk_ldb_pll = devm_clk_get_optional(dev, "ldb_pll");
+	if (IS_ERR(lcdifv3->clk_ldb_pll))
+		return dev_err_probe(dev, PTR_ERR(lcdifv3->clk_ldb_pll),
+				     "ldb_pll clock failed\n");
 
 	lcdifv3->base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(lcdifv3->base))
