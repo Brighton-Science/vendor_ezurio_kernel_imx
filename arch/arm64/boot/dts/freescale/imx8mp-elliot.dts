@@ -1043,6 +1043,16 @@
 	status = "okay";
 };
 
+/*
+ * PCIe disabled on Android 15: no Elliot variant populates the PCIe slot,
+ * and the empty DWC root complex enumerates with the Synopsys default IDs
+ * 16c3:abcd -- the exact IDs Quectel's V4.4 RIL scans for to detect their
+ * RM500U PCIe modem (also a DWC endpoint left at Synopsys defaults).  The
+ * false positive locks reference-ril into PCIe-modem mode and it never
+ * falls back to USB enumeration, so the EC25 on the USB hub is never
+ * probed and the SIM stays invisible.  Re-enable only if a board rev
+ * actually populates PCIe, and solve the RIL scan conflict then.
+ */
 &pcie {
 	assigned-clocks = <&clk IMX8MP_CLK_PCIE_AUX>;
 	assigned-clock-parents = <&clk IMX8MP_SYS_PLL2_50M>;
@@ -1055,7 +1065,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcie>;
 	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie_phy {
@@ -1063,7 +1073,7 @@
 	fsl,refclk-pad-mode = <IMX8_PCIE_REFCLK_PAD_INPUT>;
 	clocks = <&pcie0_refclk>;
 	clock-names = "ref";
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm1 {
