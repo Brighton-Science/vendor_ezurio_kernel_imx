@@ -844,6 +844,19 @@ static int qmi_wwan_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 	dev->net->netdev_ops = &qmi_wwan_netdev_ops;
 	dev->net->sysfs_groups[0] = &qmi_wwan_sysfs_attr_group;
+
+	/* Brighton Elliot: Quectel modems (EC25 etc.) transfer raw IP packets
+	 * over the QMI data interface -- 802.3 framing silently drops all
+	 * traffic.  Quectel's own out-of-tree qmi_wwan_q driver defaults their
+	 * VID to raw-IP; mirror that here so the Quectel AIDL RIL's data calls
+	 * pass traffic without userspace having to toggle
+	 * /sys/class/net/wwan0/qmi/raw_ip while the interface is down.
+	 */
+	if (status >= 0 &&
+	    le16_to_cpu(dev->udev->descriptor.idVendor) == 0x2c7c) {
+		info->flags |= QMI_WWAN_FLAG_RAWIP;
+		qmi_wwan_netdev_setup(dev->net);
+	}
 err:
 	return status;
 }
