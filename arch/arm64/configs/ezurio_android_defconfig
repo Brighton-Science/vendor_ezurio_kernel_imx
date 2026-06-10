@@ -633,7 +633,9 @@ CONFIG_GPIO_PCA953X=y
 CONFIG_GPIO_PCA953X_IRQ=y
 CONFIG_POWER_RESET_SYSCON=y
 CONFIG_SYSCON_REBOOT_MODE=y
-CONFIG_BATTERY_SBS=m
+# Brighton/Elliot: builtin — the .ko was never in the vendor module list, so
+# only dummy_battery loaded and Android saw a fake constant 85% battery.
+CONFIG_BATTERY_SBS=y
 CONFIG_BATTERY_BQ27XXX=y
 CONFIG_BATTERY_MAX17042=m
 CONFIG_CHARGER_BQ25890=m
