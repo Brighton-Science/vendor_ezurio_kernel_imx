@@ -1094,9 +1094,12 @@ CONFIG_XEN_GRANT_DEV_ALLOC=y
 CONFIG_STAGING=y
 CONFIG_STAGING_MEDIA=y
 CONFIG_VIDEO_IMX_CAPTURE=y
-# CONFIG_IMX8_MEDIA_DEVICE is not set  (Brighton/Elliot: staging driver,
-# unknown quality, taints kernel + suspected source of post-boot kernel slab
-# corruption — see device/brighton/elliot_8mp/SharedBoardConfig.mk note)
+# Brighton/Elliot: built-in (=y) for the CSI OV5640 case camera (mxc-md
+# orchestrates sensor->csis->isi graph). The 2026-06 slab corruption blamed
+# on this driver was actually the backports/compat .ko failing module_layout
+# checks; in-tree builtin uses the real kernel ABI and is what Ezurio's own
+# nitrogen_smarc-ov5640 reference runs.
+CONFIG_IMX8_MEDIA_DEVICE=y
 CONFIG_MHDP_HDMIRX=y
 CONFIG_MHDP_HDMIRX_CEC=y
 CONFIG_ASHMEM=y

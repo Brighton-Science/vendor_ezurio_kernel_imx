@@ -1280,16 +1280,33 @@
 &isp_0 { status = "disabled"; };
 &isp_1 { status = "disabled"; };
 
+/* Capture path (12.1 parity): sensor -> mipi_csi_1 -> ISI1 -> mxc_isi.1.capture,
+ * orchestrated by the mxc-md media device (CONFIG_IMX8_MEDIA_DEVICE, builtin).
+ * The Nitrogen8MP SOM dtsi ships cameradev + both ISIs disabled (Basler uses
+ * the ISP path instead); without these the CSIS logs "No remote pad found"
+ * and the NXP camera HAL's internal provider enumerates 0 devices. */
+&cameradev {
+	status = "okay";
+};
+
+&isi_1 {
+	status = "okay";
+};
+
 /* No camera on CSI0 for Elliot. */
 &mipi_csi_0 {
 	status = "disabled";
 	/delete-node/ port@0;
 };
 
-/* Repoint CSI1 from the (deleted) Basler to the OV5640, 2-lane. */
+/* Repoint CSI1 from the (deleted) Basler to the OV5640, 2-lane.
+ * hs-settle 13 per the verified 12.1 Elliot DT and Ezurio's
+ * nitrogen_smarc-ov5640 reference (the scaffold's 16 is for the
+ * 4-lane 750MHz Basler link). */
 &mipi_csi1_ep {
 	remote-endpoint = <&ov5640_csi1_ep>;
 	data-lanes = <2>;
+	csis-hs-settle = <13>;
 };
 
 &iomuxc {
