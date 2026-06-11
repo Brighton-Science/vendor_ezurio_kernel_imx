@@ -1278,18 +1278,42 @@
 
 /* ===== GPU contiguous pool: dynamic from CMA, NOT the fixed gpu_reserved =====
  * Root cause of the systemic memory corruption (zeros over kernel slabs at
- * phys 0xE0000000, caught by slub_debug on 2026-06-11): galcore's reserved-
- * pool path mis-translates the pool base — buffers at CPU phys 0xA0000000
- * (gpu_reserved) reach the GPU untranslated, and with phys_baseaddr
- * 0x40000000 the hardware then writes 0xA0000000+0x40000000 = 0xE0000000,
- * which is plain kernel RAM on Elliot (we do not reserve NXP's secure ION
- * region there). Every corruption event traced to this: logd ZSTD failures,
- * ART 0xc faults, SF segv, sched list_del panics, first-boot crashes,
- * screen-mirroring crashes. Dropping memory-region makes contiguousBase 0,
- * so galcore allocates its pool (galcore.contiguousSize=32M cmdline) from
- * CMA at 0x68000000 — the dynamic path, with correct translation. */
+ * phys 0xE0000000, caught by slub_debug on 2026-06-11): galcore's pool
+ * handling mis-translates pool addresses — buffers at CPU phys X reach the
+ * GPU untranslated, and the GPU's legacy memory-base registers (0x418-0x428,
+ * programmed with baseAddress = phys_baseaddr = 0x40000000) then turn them
+ * into writes at phys X+0x40000000. With the pool at gpu_reserved@0xA0000000
+ * that scribbled 0xE0000000 — plain kernel RAM on Elliot (we do not reserve
+ * NXP's secure ION region there; the EVK does, which is the only reason the
+ * stock BSP appears healthy). Every corruption event traced to this: logd
+ * ZSTD failures, ART 0xc faults, SF segv, sched list_del panics, first-boot
+ * crashes, screen-mirroring crashes. Dropping memory-region makes
+ * contiguousBase 0, so galcore allocates its pool (galcore.contiguousSize=32M
+ * cmdline) from CMA instead. */
 &mix_gpu_ml {
 	/delete-property/ memory-region;
+};
+
+/* The mis-translation exists on the dynamic-pool path too (verified
+ * 2026-06-11: zygote died relocating boot.art — zeroed page-cache pages —
+ * with the pool in CMA). The pool can only land inside CMA
+ * [0x68000000..0x7C000000) (cma=320M@0x400M-0xb80M cmdline; placement is
+ * deterministic given the reservation map), so the stray GPU writes can only
+ * land in [0xA8000000..0xBC000000). gpu_reserved@a0000000 (256M no-map, now
+ * unused as a pool) already deadens [0xA8000000..0xB0000000); this node
+ * deadens the rest. This mirrors the accidental immunity NXP's EVK gets from
+ * its imx-secure-ion-pool at 0xE0000000. gpu_reserved is therefore
+ * LOAD-BEARING as a shadow — do not reclaim it. Proper fix is a galcore
+ * translation fix (reported upstream to Ezurio/NXP). 2 GB SOM note: this
+ * region is the top of a 2 GB DRAM map; the reservation still applies there.
+ */
+/ {
+	reserved-memory {
+		gpu_scribble_shadow: gpu-scribble-shadow@b0000000 {
+			reg = <0 0xB0000000 0 0x0C000000>;
+			no-map;
+		};
+	};
 };
 
 /* OV5640 is a YUV sensor — bypass the Verisilicon ISP (used only for Basler raw). */
