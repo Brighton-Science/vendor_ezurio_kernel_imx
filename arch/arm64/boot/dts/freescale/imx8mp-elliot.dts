@@ -1276,6 +1276,22 @@
 	};
 };
 
+/* ===== GPU contiguous pool: dynamic from CMA, NOT the fixed gpu_reserved =====
+ * Root cause of the systemic memory corruption (zeros over kernel slabs at
+ * phys 0xE0000000, caught by slub_debug on 2026-06-11): galcore's reserved-
+ * pool path mis-translates the pool base — buffers at CPU phys 0xA0000000
+ * (gpu_reserved) reach the GPU untranslated, and with phys_baseaddr
+ * 0x40000000 the hardware then writes 0xA0000000+0x40000000 = 0xE0000000,
+ * which is plain kernel RAM on Elliot (we do not reserve NXP's secure ION
+ * region there). Every corruption event traced to this: logd ZSTD failures,
+ * ART 0xc faults, SF segv, sched list_del panics, first-boot crashes,
+ * screen-mirroring crashes. Dropping memory-region makes contiguousBase 0,
+ * so galcore allocates its pool (galcore.contiguousSize=32M cmdline) from
+ * CMA at 0x68000000 — the dynamic path, with correct translation. */
+&mix_gpu_ml {
+	/delete-property/ memory-region;
+};
+
 /* OV5640 is a YUV sensor — bypass the Verisilicon ISP (used only for Basler raw). */
 &isp_0 { status = "disabled"; };
 &isp_1 { status = "disabled"; };
