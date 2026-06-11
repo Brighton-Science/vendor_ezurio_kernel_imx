@@ -23,13 +23,18 @@
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
 
-/* Gigabit Ethernet on ENET_QOS, AT8031 PHY (Annex A: A53-owned eth0). */
+/* ENET_QOS DISABLED — no PHY is populated on the EQOS MDIO bus (verified on
+ * fielded 12.1 hardware: /sys/bus/mdio_bus has only the FEC's AT8031 at addr 4;
+ * 12.1's eth1 sat PHY-less with a random MAC, admin-down, unused — its DT node
+ * used Boundary's out-of-tree reg-mask scan, which mainline 6.6 ignores anyway).
+ * On A15 the PHY-less netdev made the PHY attach fail -ENODEV and netd SIGABRT.
+ * The product port is eth0 (FEC). Node kept for documentation. */
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
 	phy-mode = "rgmii-id";
 	phy-handle = <&ethphy_qos>;
-	status = "okay";
+	status = "disabled";
 
 	mdio {
 		compatible = "snps,dwmac-mdio";

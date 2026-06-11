@@ -21,13 +21,13 @@
 		     "ezurio,imx8mp-nitrogen8mp", "fsl,imx8mp";
 };
 
-/* Gigabit Ethernet on ENET_QOS, AT8031 PHY (Annex A: A53-owned eth0). */
+/* ENET_QOS DISABLED — no PHY populated on the EQOS bus; see rev20 comment. */
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
 	phy-mode = "rgmii-id";
 	phy-handle = <&ethphy_qos>;
-	status = "okay";
+	status = "disabled";
 
 	mdio {
 		compatible = "snps,dwmac-mdio";
