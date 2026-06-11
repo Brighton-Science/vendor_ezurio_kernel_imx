@@ -1276,41 +1276,43 @@
 	};
 };
 
-/* ===== GPU contiguous pool: dynamic from CMA, NOT the fixed gpu_reserved =====
- * Root cause of the systemic memory corruption (zeros over kernel slabs at
- * phys 0xE0000000, caught by slub_debug on 2026-06-11): galcore's pool
- * handling mis-translates pool addresses — buffers at CPU phys X reach the
- * GPU untranslated, and the GPU's legacy memory-base registers (0x418-0x428,
- * programmed with baseAddress = phys_baseaddr = 0x40000000) then turn them
- * into writes at phys X+0x40000000. With the pool at gpu_reserved@0xA0000000
- * that scribbled 0xE0000000 — plain kernel RAM on Elliot (we do not reserve
- * NXP's secure ION region there; the EVK does, which is the only reason the
- * stock BSP appears healthy). Every corruption event traced to this: logd
- * ZSTD failures, ART 0xc faults, SF segv, sched list_del panics, first-boot
- * crashes, screen-mirroring crashes. Dropping memory-region makes
- * contiguousBase 0, so galcore allocates its pool (galcore.contiguousSize=32M
- * cmdline) from CMA instead. */
-&mix_gpu_ml {
-	/delete-property/ memory-region;
-};
-
-/* The mis-translation exists on the dynamic-pool path too (verified
- * 2026-06-11: zygote died relocating boot.art — zeroed page-cache pages —
- * with the pool in CMA). The pool can only land inside CMA
- * [0x68000000..0x7C000000) (cma=320M@0x400M-0xb80M cmdline; placement is
- * deterministic given the reservation map), so the stray GPU writes can only
- * land in [0xA8000000..0xBC000000). gpu_reserved@a0000000 (256M no-map, now
- * unused as a pool) already deadens [0xA8000000..0xB0000000); this node
- * deadens the rest. This mirrors the accidental immunity NXP's EVK gets from
- * its imx-secure-ion-pool at 0xE0000000. gpu_reserved is therefore
- * LOAD-BEARING as a shadow — do not reclaim it. Proper fix is a galcore
- * translation fix (reported upstream to Ezurio/NXP). 2 GB SOM note: this
- * region is the top of a 2 GB DRAM map; the reservation still applies there.
- */
+/* ===== GPU pool: STOCK NXP reserved pool + EVK-equivalent dead shadow =====
+ * galcore mis-translates some GPU accesses to its contiguous pool: buffers
+ * at CPU phys X reach the hardware untranslated, and the GPU's legacy
+ * memory-base registers (0x418-0x428, programmed with baseAddress =
+ * phys_baseaddr = 0x40000000) turn them into stray writes at phys
+ * X+0x40000000. With the stock pool at gpu_reserved@0xA0000000 the strays
+ * land in [0xE0000000..), zeroing whatever lives there. slub_debug
+ * (2026-06-11) caught exactly this: zeros over kernel slabs at
+ * 0xE0000000..+256K, and NOWHERE else — the reserved-path scribble is
+ * bounded to the pool image. NXP's EVK is immune by accident: its
+ * imx-secure-ion-pool reserves 256M at exactly 0xE0000000 (we rightly do
+ * not ship secure ION / Trusty, so on Elliot that was live kernel RAM —
+ * the root cause of every A15 corruption fingerprint: first-boot
+ * crash-loops, zeroed boot.art page cache, logd ZSTD failures, ART 0xc
+ * faults, SF segv, sched list_del panics, mirroring crashes).
+ *
+ * Two attempted fixes that did NOT hold, for the record:
+ *  - dynamic CMA pool (/delete-property/ memory-region): the mis-translation
+ *    follows the pool, and the dynamic path is one NXP never validates —
+ *    first boots still corrupted (zygote died relocating boot.art) and
+ *    ended in a galcore gckDEVICE_Dispatch kernel panic.
+ *  - dynamic pool + 192M shadow at 0xB0000000: still corrupted; GPU virtual-
+ *    pool buffers live anywhere in RAM, so the blast zone of the dynamic
+ *    path is not coverable by shadows.
+ *
+ * So: keep the stock memory-region binding (gpu_reserved@a0000000, the path
+ * with all of NXP's EVK device-hours behind it) and reproduce the EVK's
+ * immunity deliberately with a 256M no-map hole at 0xE0000000 sized to
+ * cover the full pool image [0xE0000000..0xF0000000). Proper fix is a
+ * galcore translation patch (reported upstream to Ezurio/NXP); reclaim
+ * this region only after that lands. 2 GB SOM note: 2 GB DRAM ends at
+ * 0xC0000000 — this node simply fails reservation there (harmless), and
+ * the strays target nonexistent addresses as on every 2 GB EVK. */
 / {
 	reserved-memory {
-		gpu_scribble_shadow: gpu-scribble-shadow@b0000000 {
-			reg = <0 0xB0000000 0 0x0C000000>;
+		gpu_scribble_shadow: gpu-scribble-shadow@e0000000 {
+			reg = <0 0xE0000000 0 0x10000000>;
 			no-map;
 		};
 	};
