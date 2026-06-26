@@ -885,7 +885,12 @@ CONFIG_FB_MXC_DISP_FRAMEWORK=y
 CONFIG_BACKLIGHT_CLASS_DEVICE=y
 CONFIG_BACKLIGHT_PWM=y
 CONFIG_BACKLIGHT_GPIO=y
-# CONFIG_LOGO is not set
+# Boot logo (Brighton Science): fbcon draws drivers/video/logo/logo_linux_clut224.ppm
+# centered during kernel boot, matching 12.1. Paired with `console=ttymxc1,115200`
+# in BOARD_KERNEL_CMDLINE so kernel printk goes to serial only (no scrolling text
+# on the LCD) and the logo stays until the Android boot animation.
+CONFIG_LOGO=y
+CONFIG_LOGO_LINUX_CLUT224=y
 # CONFIG_LOGO_LINUX_MONO is not set
 # CONFIG_LOGO_LINUX_VGA16 is not set
 CONFIG_SOUND=y
