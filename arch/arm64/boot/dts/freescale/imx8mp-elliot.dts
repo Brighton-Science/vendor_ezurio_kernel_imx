@@ -154,8 +154,16 @@
 		pinctrl-0 = <&pinctrl_flexcan2_reg>;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
+		/* CAN2 transceiver STBY is active-low (low = normal, high = standby).
+		 * The flexcan2 driver enables this regulator while can0 is up, so
+		 * "enabled" must drive STBY LOW. regulator-fixed derives the enable
+		 * polarity ONLY from `enable-active-high` (the gpio cell flag is
+		 * ignored) -- so that property must be ABSENT here (enable => drive
+		 * low). A15 had `enable-active-high` set, so enabled drove STBY HIGH ->
+		 * transceiver stuck in standby -> CAN BUS-OFF when flashing the STM32
+		 * head. Matches 12.1 (no enable-active-high). Verified on-device via
+		 * /sys/kernel/debug/gpio (enabled -> gpio-41 lo). */
 		gpio = <&gpio2 9 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
 	};
 
 	reg_usb_otg_vbus: regulator-usb-otg-vbus {
