@@ -672,13 +672,16 @@
 			MX8MP_IOMUXC_HDMI_HPD__HDMIMIX_HDMI_HPD		0x40000019
 			MX8MP_IOMUXC_HDMI_CEC__HDMIMIX_HDMI_CEC		0x40000019
 			MX8MP_IOMUXC_NAND_DATA01__GPIO3_IO07		0x119
-			/* J31 */
-			MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04		0x41	/* Pin 17 */
-			MX8MP_IOMUXC_SPDIF_EXT_CLK__GPIO5_IO05		0x41	/* Pin 19 */
-			MX8MP_IOMUXC_SPDIF_TX__GPIO5_IO03		0x41	/* Pin 21 */
-			MX8MP_IOMUXC_SD1_RESET_B__GPIO2_IO10		0x41	/* Pin 23 */
+			/* J31 — 12.1-parity subset ONLY. The Nitrogen scaffold muxed more of
+			 * this header, but on Elliot several of those pads belong to the
+			 * Cortex-M7 (see "Annex-A" comment above pinctrl_usdhc1_gpio):
+			 *  - SD1_RESET_B (Pin 23) is the M7's I2C3 SCL — muxing it GPIO here
+			 *    killed the M7's pump-driver/NVRAM/LED I2C bus the moment Linux
+			 *    booted (piezo pump dead, NVR:ERR=-40).
+			 *  - SPDIF_RX/TX/EXT_CLK (Pins 17/21/19) are M7 GPIO5_04/03/05.
+			 *  - SD1_DATA5 (Pin 29) is the SD card-detect; it is muxed with the
+			 *    proper pull-up in pinctrl_usdhc1_gpio (as on 12.1), not here. */
 			MX8MP_IOMUXC_SD1_DATA6__GPIO2_IO08		0x41	/* Pin 25 */
-			MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07		0x41	/* Pin 29 */
 			MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06		0x41	/* Pin 31 */
 			MX8MP_IOMUXC_SAI1_MCLK__GPIO4_IO20		0x16	/* Pin 2 */
 			MX8MP_IOMUXC_SAI1_TXD7__GPIO4_IO19		0x1c4	/* Pin 4 */
@@ -876,9 +879,30 @@
 		>;
 	};
 
+	/* ------------------------------------------------------------------
+	 * Annex-A: pads owned by the Cortex-M7 firmware — DO NOT mux in Linux.
+	 * The M7 (started by U-Boot preboot, BEFORE Linux) muxes these itself
+	 * (bconnect-m7-firmware brighton_m7_firmware/pin_mux.c); any Linux
+	 * pinctrl entry re-muxes them at boot (IOMUXC last-writer-wins) and
+	 * silently breaks the M7 peripheral. 12.1 never touched any of them.
+	 *   SD1_RESET_B  -> M7 I2C3 SCL  (Lee pump drv 0x25, FXL6408 0x43,
+	 *   SD1_STROBE   -> M7 I2C3 SDA   FRAM NVRAM 0x50, LED driver)
+	 *   ECSPI2_SCLK/MOSI/MISO/SS0 -> M7 ECSPI2 + bit-banged CS GPIO5_13
+	 *                                 (MSP430 power-sequencer link)
+	 *   SAI5_RXD1/RXD2 -> M7 FLEXCAN1 (dyno head CAN)
+	 *   SAI5_RXFS      -> M7 PWM4 (fan)
+	 *   SAI3_TXC/TXD/MCLK -> M7 GPIO5_00/01/02 (pump power enable etc.)
+	 *   SPDIF_TX/RX/EXT_CLK -> M7 GPIO5_03/04/05
+	 * The Linux controller nodes for the shared peripherals (i2c3, ecspi2,
+	 * pwm4, flexcan1) are status="disabled" (imx8mp-elliot-m7.dtsi and the
+	 * &flexcan1 override below) — keep them that way.
+	 * ------------------------------------------------------------------ */
 	pinctrl_usdhc1_gpio: usdhc1grp-gpio {
 		fsl,pins = <
-			MX8MP_IOMUXC_SD1_STROBE__GPIO2_IO11	0x1c4
+			/* SD card-detect, as on 12.1 (SD1_DATA5 with pull-up; the
+			 * Nitrogen scaffold's SD1_STROBE entry here stomped the M7's
+			 * I2C3 SDA — see Annex-A above). cd-gpios = <&gpio2 7>. */
+			MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07	0x1c4
 		>;
 	};
 };
