@@ -109,14 +109,25 @@ static void dwc3_imx8mp_wakeup_enable(struct dwc3_imx8mp *dwc3_imx,
 
 	val = readl(dwc3_imx->hsio_blk_base + USB_WAKEUP_CTRL);
 
-	if ((dwc3->current_dr_role == DWC3_GCTL_PRTCAP_HOST) && dwc3->xhci) {
-		val |= USB_WAKEUP_EN | USB_WAKEUP_DPDM_EN;
-		if (PMSG_IS_AUTO(msg))
-			val |= USB_WAKEUP_SS_CONN | USB_WAKEUP_U3_EN;
-	} else {
+	/*
+	 * Brighton Elliot: 12.1 / lf-5.15 parity for tap-to-wake. The lf-6.6
+	 * scaffold narrowed the host-mode SYSTEM-suspend arm to DPDM_EN only
+	 * (SS_CONN|U3_EN gated behind PMSG_IS_AUTO). On this board that config
+	 * misfires: dwc3_core_exit() powers the USB PHY down at system suspend,
+	 * and with only DPDM_EN armed the HSIO wakeup unit latches ~4ms after
+	 * arming (pm_system_irq_wakeup: 194 -> "Wakeup pending. Abort CPU
+	 * freeze" on every attempt, no bus activity in the window). The 12.1
+	 * kernel arms SS_CONN|U3_EN|DPDM_EN together against the very same
+	 * powered-down PHY and is field-proven to stay suspended and wake on a
+	 * PenMount touch, so arm the full 5.15 set for both runtime and system
+	 * suspend.
+	 */
+	if ((dwc3->current_dr_role == DWC3_GCTL_PRTCAP_HOST) && dwc3->xhci)
+		val |= USB_WAKEUP_EN | USB_WAKEUP_SS_CONN |
+		       USB_WAKEUP_U3_EN | USB_WAKEUP_DPDM_EN;
+	else
 		val |= USB_WAKEUP_EN | USB_WAKEUP_VBUS_EN |
 		       USB_WAKEUP_VBUS_SRC_SESS_VAL;
-	}
 
 	writel(val, dwc3_imx->hsio_blk_base + USB_WAKEUP_CTRL);
 }
