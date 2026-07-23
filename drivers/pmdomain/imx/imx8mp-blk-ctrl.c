@@ -329,6 +329,20 @@ static const struct imx8mp_blk_ctrl_domain_data imx8mp_hsio_domain_data[] = {
 			&imx8mp_hsio_noc_data[IMX8MP_HSIOBLK_USB1],
 			&imx8mp_hsio_noc_data[IMX8MP_HSIOBLK_USB2]
 		},
+		/*
+		 * Brighton Elliot tap-to-wake: keep the USB domain powered
+		 * across system suspend when a device in it (the dwc3-imx8mp
+		 * glue, 32f10108.usb) has wakeup armed. Without this, genpd
+		 * cuts the domain in the noirq phase and the armed USB wakeup
+		 * detector glitch-latches as it loses power -> IRQ 194 fires
+		 * ~5ms later -> "Wakeup pending. Abort CPU freeze" on every
+		 * suspend attempt. Bench-proven with pm_test: devices-only
+		 * suspend is clean, adding the noirq/platform phase trips it.
+		 * 5.15/12.1 had no imx8mp-blk-ctrl driver (domains stayed on),
+		 * which is why tap-to-wake+suspend worked there. The USB PHY
+		 * domains below already carry this flag upstream.
+		 */
+		.flags = GENPD_FLAG_ACTIVE_WAKEUP,
 	},
 	[IMX8MP_HSIOBLK_PD_USB_PHY1] = {
 		.name = "hsioblk-usb-phy1",
