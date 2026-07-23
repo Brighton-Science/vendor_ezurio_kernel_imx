@@ -788,11 +788,18 @@ static int imx8mq_phy_power_on(struct phy *phy)
 	u32 value;
 	int ret;
 
-	if (!regulator_is_enabled(imx_phy->vbus)) {
-		ret = regulator_enable(imx_phy->vbus);
-		if (ret)
-			return ret;
-	}
+	/*
+	 * Brighton Elliot: 12.1 parity. usb3_phy0 and usb3_phy1 share
+	 * reg_vref_5v0, so vbus enable/disable MUST be balanced and let the
+	 * regulator core refcount. The scaffold's regulator_is_enabled() guard
+	 * makes the second PHY skip its enable (refcount stuck at 1 for 2 users),
+	 * so the first port to suspend drops VBUS for BOTH -> downstream hub/touch
+	 * disconnect -> DPDM self-wake (IRQ 194) + the "unbalanced disables for
+	 * vref-5v0" warning. Enable unconditionally like 12.1.
+	 */
+	ret = regulator_enable(imx_phy->vbus);
+	if (ret)
+		return ret;
 
 	ret = clk_prepare_enable(imx_phy->clk);
 	if (ret)
@@ -817,8 +824,8 @@ static int imx8mq_phy_power_off(struct phy *phy)
 	writel(value, imx_phy->base + PHY_CTRL6);
 
 	clk_disable_unprepare(imx_phy->clk);
-	if (regulator_is_enabled(imx_phy->vbus))
-		regulator_disable(imx_phy->vbus);
+	/* Brighton Elliot: 12.1 parity -- balanced disable, see power_on(). */
+	regulator_disable(imx_phy->vbus);
 
 	return 0;
 }
@@ -1052,14 +1059,16 @@ static int imx8mq_phy_set_mode(struct phy *phy, enum phy_mode mode,
 	struct imx8mq_usb_phy *imx_phy = phy_get_drvdata(phy);
 	int ret = 0;
 
-	if (mode == PHY_MODE_USB_DEVICE) {
-		if (regulator_is_enabled(imx_phy->vbus))
-			ret = regulator_disable(imx_phy->vbus);
+	/*
+	 * Brighton Elliot: 12.1 parity. Do NOT touch the shared reg_vref_5v0
+	 * here -- vbus is refcounted solely in power_on()/power_off(). The
+	 * scaffold added an unbalanced disable/enable in set_mode() which
+	 * corrupted the shared-regulator refcount (fired "unbalanced disables
+	 * for vref-5v0" at boot during role switching). 12.1 does charger detect
+	 * only.
+	 */
+	if (mode == PHY_MODE_USB_DEVICE)
 		return imx8mq_phy_charger_detect(imx_phy);
-	} else if (mode == PHY_MODE_USB_HOST) {
-		if (!regulator_is_enabled(imx_phy->vbus))
-			ret = regulator_enable(imx_phy->vbus);
-	}
 
 	return ret;
 }
