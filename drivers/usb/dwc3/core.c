@@ -11,6 +11,7 @@
 #include <linux/clk.h>
 #include <linux/version.h>
 #include <linux/module.h>
+#include <linux/regulator/consumer.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -224,6 +225,11 @@ static void __dwc3_set_mode(struct work_struct *work)
 				otg_set_vbus(dwc->usb2_phy->otg, true);
 			phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
 			phy_set_mode(dwc->usb3_generic_phy, PHY_MODE_USB_HOST);
+			/* Brighton: drive port VBUS in host role (12.1 parity) */
+			if (dwc->vbus_reg && !regulator_is_enabled(dwc->vbus_reg)) {
+				if (regulator_enable(dwc->vbus_reg))
+					dev_err(dwc->dev, "failed to enable vbus\n");
+			}
 			if (dwc->dis_split_quirk) {
 				reg = dwc3_readl(dwc->regs, DWC3_GUCTL3);
 				reg |= DWC3_GUCTL3_SPLITDISABLE;
@@ -240,6 +246,11 @@ static void __dwc3_set_mode(struct work_struct *work)
 			otg_set_vbus(dwc->usb2_phy->otg, false);
 		phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_DEVICE);
 		phy_set_mode(dwc->usb3_generic_phy, PHY_MODE_USB_DEVICE);
+		/* Brighton: stop driving port VBUS outside host role (12.1 parity) */
+		if (dwc->vbus_reg && regulator_is_enabled(dwc->vbus_reg)) {
+			if (regulator_disable(dwc->vbus_reg))
+				dev_err(dwc->dev, "failed to disable vbus\n");
+		}
 
 		ret = dwc3_gadget_init(dwc);
 		if (ret)
@@ -1736,6 +1747,18 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 
 	dwc->dis_split_quirk = device_property_read_bool(dev,
 				"snps,dis-split-quirk");
+
+	/*
+	 * Brighton Elliot: 12.1/lf-5.15 parity -- optional "vbus" regulator
+	 * (see core.h vbus_reg). Missing supply is not an error.
+	 */
+	dwc->vbus_reg = devm_regulator_get_optional(dev, "vbus");
+	if (IS_ERR(dwc->vbus_reg)) {
+		if (PTR_ERR(dwc->vbus_reg) != -ENODEV)
+			dev_info(dev, "no usable vbus regulator %ld\n",
+				 PTR_ERR(dwc->vbus_reg));
+		dwc->vbus_reg = NULL;
+	}
 
 	dwc->host_vbus_glitches = device_property_read_bool(dev,
 				"snps,host-vbus-glitches");

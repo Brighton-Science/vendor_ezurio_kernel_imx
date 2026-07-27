@@ -1072,6 +1072,7 @@ struct dwc3_platform_data {
  * @usb3_phy: pointer to USB3 PHY
  * @usb2_generic_phy: pointer to USB2 PHY
  * @usb3_generic_phy: pointer to USB3 PHY
+ * @vbus_reg: optional "vbus" regulator, driven while in host role
  * @phys_ready: flag to indicate that PHYs are ready
  * @ulpi: pointer to ulpi interface
  * @ulpi_ready: flag to indicate that ULPI is initialized
@@ -1218,6 +1219,15 @@ struct dwc3 {
 
 	struct phy		*usb2_generic_phy;
 	struct phy		*usb3_generic_phy;
+
+	/*
+	 * Brighton Elliot: 12.1/lf-5.15 parity. Optional "vbus" regulator on
+	 * the dwc3 node (reg_usb_otg_vbus, GPIO1_IO12) enabled in host role,
+	 * disabled in device role, so the OTG Type-C port powers a memory
+	 * stick after the app switches the usb_role sysfs to host. lf-6.6
+	 * dropped the 5.15 dwc3_set_vbus()/vbus_reg support.
+	 */
+	struct regulator	*vbus_reg;
 
 	bool			phys_ready;
 

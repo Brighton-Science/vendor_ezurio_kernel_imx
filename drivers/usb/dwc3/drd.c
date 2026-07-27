@@ -511,6 +511,14 @@ static int dwc3_setup_role_switch(struct dwc3 *dwc)
 	dwc3_role_switch.set = dwc3_usb_role_switch_set;
 	dwc3_role_switch.get = dwc3_usb_role_switch_get;
 	dwc3_role_switch.driver_data = dwc;
+	/*
+	 * Brighton Elliot: 12.1/lf-5.15 parity. Without this the usb_role
+	 * class hides the "role" sysfs attribute entirely
+	 * (usb_role_switch_is_visible), so the surface-analyst / Mass Cal
+	 * host-mode toggle on the Type-C port (38100000.usb) finds no node to
+	 * write. NXP 5.15 set this unconditionally in dwc3_setup_role_switch.
+	 */
+	dwc3_role_switch.allow_userspace_control = true;
 	dwc->role_sw = usb_role_switch_register(dwc->dev, &dwc3_role_switch);
 	if (IS_ERR(dwc->role_sw))
 		return PTR_ERR(dwc->role_sw);
