@@ -749,7 +749,13 @@
 
 	pinctrl_reg_usbotg_vbus: reg-usbotg-vbusgrp {
 		fsl,pins = <
-			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12	0x100
+			/*
+			 * 12.1 parity (0x16 = DSE_X6 + FSEL): this pad DRIVES the
+			 * OTG VBUS FET enable. The scaffold's 0x100 (PE pull-down,
+			 * zero drive strength) left the FET off -- GPIO "out hi"
+			 * in software but no 5V at the Type-C port.
+			 */
+			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12	0x16
 		>;
 	};
 
@@ -1178,6 +1184,15 @@
 	pinctrl-0 = <&pinctrl_usb3_0>;
 	status = "okay";
 	usb-role-switch;
+	/*
+	 * 12.1 (elliot_rev20_non_pd) parity: boot as gadget (adb), let the app
+	 * flip the usb_role sysfs to host for USB-stick export; vbus-supply
+	 * (reg_usb_otg_vbus, GPIO1_IO12) is driven by dwc3 only in host role
+	 * (Brighton vbus_reg port in dwc3 core -- lf-6.6 dropped the 5.15
+	 * support this relies on).
+	 */
+	role-switch-default-mode = "peripheral";
+	vbus-supply = <&reg_usb_otg_vbus>;
 
 	ports {
 		#address-cells = <1>;
