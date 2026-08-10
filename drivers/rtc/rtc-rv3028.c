@@ -998,6 +998,47 @@ static int rv3028_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
+	/*
+	 * Brighton Elliot: program VBACKUP switchover from the devicetree.
+	 * The elliot DT has carried "backup-switchover-dsm" since 12.1, but no
+	 * upstream rv3028 driver (5.15 or 6.6) ever parsed it -- the config
+	 * EEPROM stayed at its factory default (reg 0x37 = 0x10, BSM=00 =
+	 * switchover DISABLED), so the RTC browned out on every power-down, set
+	 * PORF, and lost the wall clock on the next cold boot (hctosys "unable
+	 * to read the hardware clock"). Warm reboots were fine, which masked it.
+	 *
+	 * Program Direct Switching Mode (DSM) -- correct for a primary
+	 * (non-rechargeable) backup coin cell -- writing it to the config EEPROM
+	 * via rv3028_update_cfg() so it survives power loss (the RAM mirror is
+	 * reloaded from EEPROM at every power-up). TCE stays 0: never
+	 * trickle-charge a primary cell. Read-modify guarded so the EEPROM is
+	 * only written when it isn't already DSM, avoiding wear on a unit that
+	 * reboots often (result: 0x10 -> 0x14). NOTE: this is necessary but only
+	 * sufficient if VBACKUP is physically wired to the coin cell -- verify
+	 * with a real power-off test.
+	 */
+	if (device_property_read_bool(&client->dev, "backup-switchover-dsm")) {
+		u32 backup;
+
+		ret = regmap_read(rv3028->regmap, RV3028_BACKUP, &backup);
+		if (ret)
+			return ret;
+		if (FIELD_GET(RV3028_BACKUP_BSM, backup) != RV3028_BACKUP_BSM_DSM) {
+			ret = rv3028_update_cfg(rv3028, RV3028_BACKUP,
+						RV3028_BACKUP_BSM,
+						FIELD_PREP(RV3028_BACKUP_BSM,
+							   RV3028_BACKUP_BSM_DSM));
+			if (ret)
+				dev_warn(&client->dev,
+					 "failed to enable VBACKUP switchover (DSM): %d\n",
+					 ret);
+			else
+				dev_info(&client->dev,
+					 "VBACKUP switchover enabled (DSM), reg 0x37 was 0x%02x\n",
+					 backup);
+		}
+	}
+
 	ret = rtc_add_group(rv3028->rtc, &rv3028_attr_group);
 	if (ret)
 		return ret;
