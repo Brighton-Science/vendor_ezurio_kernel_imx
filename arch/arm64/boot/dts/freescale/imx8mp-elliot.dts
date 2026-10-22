@@ -49,10 +49,25 @@
 	};
 
 	backlight_lvds: backlight-lvds {
-		brightness-levels = <0 1 2 3 4 5 6 7 8 9 10>;
+		/*
+		 * Brighton: fine exponential table, 100 steps from 0.5% to 100% duty (the duty
+		 * denominator is the last entry). The Ezurio <0 1 ... 10> table (also 12.1's)
+		 * made 10% duty the dimmest non-off level, so the app's idle dim and the bottom
+		 * of the slider all landed on the same step. max_brightness becomes 100; the
+		 * hwcomposer3 HAL reads at most 4 digits of it. Default level = 80% duty, the
+		 * same boot brightness as before (old default 8 of 10).
+		 */
+		brightness-levels = <
+			0 50 53 56 59 62 65 69 73 77 81 85 90 95 100 106 112 118 124 131 138
+			146 154 162 171 181 191 201 212 224 236 249 263 277 292 308 325 343 362
+			382 403 425 449 473 499 527 556 586 619 653 688 726 766 808 853 900 949
+			1001 1056 1114 1176 1240 1309 1380 1456 1536 1621 1710 1804 1903 2008
+			2118 2235 2357 2487 2624 2768 2920 3081 3250 3429 3617 3816 4026 4247
+			4481 4727 4987 5261 5550 5856 6178 6517 6875 7253 7652 8073 8517 8985
+			9479 10000>;
 		compatible = "pwm-backlight";
 		display = <&lcdif2>;
-		default-brightness-level = <8>;
+		default-brightness-level = <96>;
 		enable-gpios = <&gpio4 22 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_backlight_lvds>;
@@ -62,10 +77,25 @@
 	};
 
 	backlight_lvds2: backlight-lvds2 {
-		brightness-levels = <0 1 2 3 4 5 6 7 8 9 10>;
+		/*
+		 * Brighton: fine exponential table, 100 steps from 0.5% to 100% duty (the duty
+		 * denominator is the last entry). The Ezurio <0 1 ... 10> table (also 12.1's)
+		 * made 10% duty the dimmest non-off level, so the app's idle dim and the bottom
+		 * of the slider all landed on the same step. max_brightness becomes 100; the
+		 * hwcomposer3 HAL reads at most 4 digits of it. Default level = 80% duty, the
+		 * same boot brightness as before (old default 8 of 10).
+		 */
+		brightness-levels = <
+			0 50 53 56 59 62 65 69 73 77 81 85 90 95 100 106 112 118 124 131 138
+			146 154 162 171 181 191 201 212 224 236 249 263 277 292 308 325 343 362
+			382 403 425 449 473 499 527 556 586 619 653 688 726 766 808 853 900 949
+			1001 1056 1114 1176 1240 1309 1380 1456 1536 1621 1710 1804 1903 2008
+			2118 2235 2357 2487 2624 2768 2920 3081 3250 3429 3617 3816 4026 4247
+			4481 4727 4987 5261 5550 5856 6178 6517 6875 7253 7652 8073 8517 8985
+			9479 10000>;
 		compatible = "pwm-backlight";
 		display = <&lcdif2>;
-		default-brightness-level = <8>;
+		default-brightness-level = <96>;
 		enable-gpios = <&gpio4 21 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_backlight_lvds2>;
