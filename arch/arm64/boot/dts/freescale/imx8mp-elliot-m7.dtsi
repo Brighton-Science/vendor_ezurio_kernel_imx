@@ -75,6 +75,16 @@
 	status = "disabled";
 };
 
+/* CAN1_STBY (SAI5_RXC = GPIO3_IO20) goes with FlexCAN1 to the M7, which holds
+ * the head's CAN transceiver in standby while the STM32 head is in its
+ * bootloader.  12.1 had no Linux node on this pin; the Ezurio base adds a
+ * fixed regulator that re-muxes the pad and drives the line low.  FlexCAN1 is
+ * disabled, so nothing in Linux uses the regulator: leave the pin to the M7.
+ */
+&reg_can1_stby {
+	status = "disabled";
+};
+
 /* GPIO5 is the M7's bank: IO00-02 pump driver board (IO00 = pump power
  * enable), IO03 fan, IO09 heartbeat, IO13 MSP430 SPI chip-select.  Keep
  * Linux off it entirely, as 12.1 did (Kynetics 882e605b5cef, "disable gpio5
