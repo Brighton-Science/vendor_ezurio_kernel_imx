@@ -74,3 +74,44 @@
 &pwm4 {
 	status = "disabled";
 };
+
+/* GPIO5 is the M7's bank: IO00-02 pump driver board (IO00 = pump power
+ * enable), IO03 fan, IO09 heartbeat, IO13 MSP430 SPI chip-select.  Keep
+ * Linux off it entirely, as 12.1 did (Kynetics 882e605b5cef, "disable gpio5
+ * bank. Used by the M7 core.").
+ *
+ * gpio-mxc reads a port's data register once at probe and afterwards writes
+ * that whole 32-bit copy back on every output change, so one Linux write to
+ * any GPIO5 line resets all the M7's outputs to their probe-time values.
+ * Linux's only GPIO5 lines were the I2C bus-recovery pins below, which sit on
+ * GPIO5 for every I2C bus (IO14-21): each recovery of I2C1/I2C2/I2C4 could
+ * switch the pump power off behind the M7's back (EN-5573).
+ */
+&gpio5 {
+	status = "disabled";
+};
+
+/* No GPIO5 means no GPIO bus recovery; drop the recovery pins and the "gpio"
+ * pinctrl state together, or i2c-imx would defer its probe forever waiting
+ * for the disabled bank.
+ */
+&i2c1 {
+	pinctrl-names = "default";
+	/delete-property/ pinctrl-1;
+	/delete-property/ scl-gpios;
+	/delete-property/ sda-gpios;
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	/delete-property/ pinctrl-1;
+	/delete-property/ scl-gpios;
+	/delete-property/ sda-gpios;
+};
+
+&i2c4 {
+	pinctrl-names = "default";
+	/delete-property/ pinctrl-1;
+	/delete-property/ scl-gpios;
+	/delete-property/ sda-gpios;
+};
